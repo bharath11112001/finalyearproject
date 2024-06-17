@@ -1,0 +1,83 @@
+
+
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Recorder</title>
+</head>
+<body>
+    <h1>Audio Recorder</h1>
+    
+    <button id="startRecording">Start Recording</button>
+    <button id="stopRecording" disabled>Stop Recording</button>
+    <div>&nbsp;</div>
+    <div>&nbsp;</div>
+    <div>&nbsp;</div>
+
+    <audio controls id="audioPlayer" style="display: none;"></audio>
+    
+    <!-- Add a form with a submit button -->
+    <form id="audioForm" action="/upload" method="post">
+        <input type="hidden" name="audio" id="audioData"><div>&nbsp;</div><div>&nbsp;</div>
+        <button type="button" id="submitAudio">Submit Audio</button>
+    </form>
+
+    <script src="https://cdn.webrtc-experiment.com/RecordRTC.js"></script>
+    <script>
+        var recordRTC;
+
+        document.getElementById('startRecording').addEventListener('click', startRecording);
+        document.getElementById('stopRecording').addEventListener('click', stopRecording);
+        document.getElementById('submitAudio').addEventListener('click', submitAudio);
+
+        function startRecording() {
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+                recordRTC = RecordRTC(stream, { type: 'audio' });
+                recordRTC.startRecording();
+                document.getElementById('startRecording').disabled = true;
+                document.getElementById('stopRecording').disabled = false;
+            }).catch(function (error) {
+                console.error('getUserMedia error:', error);
+            });
+        }
+
+        function stopRecording() {
+            recordRTC.stopRecording(function (audioURL) {
+                document.getElementById('startRecording').disabled = false;
+                document.getElementById('stopRecording').disabled = true;
+                
+                // Display the audio player and set its source
+                var audioPlayer = document.getElementById('audioPlayer');
+                audioPlayer.style.display = 'block';
+                audioPlayer.src = audioURL;
+
+                // Convert audio data to Blob
+                recordRTC.getDataURL(function (dataURL) {
+                    var blob = dataURItoBlob(dataURL);
+
+                    // Set the audio data in the hidden input field
+                    document.getElementById('audioData').value = dataURL;
+                });
+            });
+        }
+
+        function submitAudio() {
+            // Submit the form
+            document.getElementById('audioForm').submit();
+        }
+
+        // Helper function to convert data URI to Blob
+        function dataURItoBlob(dataURI) {
+            var byteString = atob(dataURI.split(',')[1]);
+            var ab = new ArrayBuffer(byteString.length);
+            var ia = new Uint8Array(ab);
+            for (var i = 0; i < byteString.length; i++) {
+                ia[i] = byteString.charCodeAt(i);
+            }
+            return new Blob([ab], { type: 'audio/mp3' });
+        }
+    </script>
+</body>
+</html>

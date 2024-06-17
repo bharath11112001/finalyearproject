@@ -1,0 +1,501 @@
+from flask import Flask
+from flask import Flask, render_template, Response, redirect, request, session, abort, url_for
+from datetime import datetime
+from datetime import date
+import datetime
+import os
+from werkzeug.utils import secure_filename
+
+
+import mysql.connector
+
+mydb = mysql.connector.connect(
+  host="localhost",
+  user="root",
+  passwd="",
+  charset="utf8",
+  database="fyp"
+)
+
+
+app = Flask(__name__, static_url_path='/static')
+app.secret_key = 'abcdef'
+
+@app.route('/',methods=['POST','GET'])
+def index():
+
+    return render_template('index.html')
+
+@app.route('/login',methods=['POST','GET'])
+def login():
+    
+    msg=""
+    if request.method == 'POST':
+        username = request.form['username']
+        username = request.form['password']
+        mycursor = mydb.cursor()
+        mycursor.execute("SELECT count(*) FROM fyp_admin where username=%s && password=%s",(username,password))
+        account = cursor.fetchone()
+        
+        if account:
+            session['username'] = username
+            session['user_type'] = 'admin'
+            msg="success"
+            
+        else:
+            msg="fail"
+        
+
+    return render_template('login.html',msg=msg)
+
+
+@app.route('/addstu',methods=['POST','GET'])
+def addstu():
+    msg=""
+    
+    if request.method=='POST':
+        reg_no=request.form['reg_no']
+        name=request.form['name']
+        gender=request.form['gender']
+        dob=request.form['dob']
+        mobile=request.form['mobile']
+        email=request.form['email']
+        address=request.form['address']
+        dept=request.form['dept']
+        batch_year=request.form['batch_year']
+        password=request.form['password']
+
+        
+        now = datetime.datetime.now()
+        date_join=now.strftime("%d-%m-%Y")
+        mycursor = mydb.cursor()
+
+        mycursor.execute("SELECT count(*) FROM fyp_student where reg_no=%s",(reg_no, ))
+        cnt = mycursor.fetchone()[0]
+        if cnt==0:
+            mycursor.execute("SELECT max(id)+1 FROM fyp_student")
+            maxid = mycursor.fetchone()[0]
+            if maxid is None:
+                maxid=1
+            sql = "INSERT INTO fyp_student(id, name, reg_no, gender, dob, mobile, email, address,  dept, batch_year, password,date_join) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s)"
+            val = (maxid, name, reg_no, gender, dob, mobile, email, address,  dept, batch_year, password,date_join)
+            
+            mycursor.execute(sql, val)
+            mydb.commit()
+
+            msg="success"
+        else:
+            msg="fail"
+            
+    return render_template('addstu.html',msg=msg)
+
+
+@app.route('/addstaff',methods=['POST','GET'])
+def addstaff():
+    msg=""
+    
+    if request.method=='POST':
+        
+        staff_id=request.form['staff_id']
+        name=request.form['name']       
+        mobile=request.form['mobile']
+        email=request.form['email']
+        location=request.form['location']        
+        password=request.form['password']
+        staff_type=request.form['staff_type']
+        
+       
+
+        
+        now = datetime.datetime.now()
+        date_join=now.strftime("%d-%m-%Y")
+        mycursor = mydb.cursor()
+
+        mycursor.execute("SELECT count(*) FROM fyp_staff where staff_id=%s",(staff_id, ))
+        cnt = mycursor.fetchone()[0]
+        if cnt==0:
+            mycursor.execute("SELECT max(id)+1 FROM fyp_staff")
+            maxid = mycursor.fetchone()[0]
+            if maxid is None:
+                maxid=1
+            sql = "INSERT INTO fyp_staff(id, name, mobile, email, location,  staff_id, password, staff_type,date_join) VALUES (%s, %s, %s, %s, %s, %s, %s,%s,%s)"
+            val = (maxid, name, mobile, email, location,  staff_id, password, staff_type,date_join)
+            
+            
+            mycursor.execute(sql, val)
+            mydb.commit()
+
+            msg="success"
+        else:
+            msg="fail"
+            
+    return render_template('addstaff.html',msg=msg)
+
+
+
+@app.route('/profile',methods=['POST','GET'])
+def profile():
+    
+    mycursor = mydb.cursor()
+    mycursor.execute("SELECT * FROM fyp_student")
+    value = mycursor.fetchall()
+            
+    act = request.args.get('act')
+    if act=="del":
+        did = request.args.get('did')
+        mycursor.execute("delete from fyp_student where id=%s",(did,))
+        mydb.commit()
+        return redirect(url_for('profile'))
+
+    mycursor = mydb.cursor()
+    mycursor.execute("SELECT * FROM fyp_staff order by id")
+    value2 = mycursor.fetchall()
+
+    act = request.args.get('act')
+    if act=="del":
+        did = request.args.get('did')
+        mycursor.execute("delete from fyp_staff where id=%s",(did,))
+        mydb.commit()
+        return redirect(url_for('profile')) 
+   
+    return render_template('profile.html', data=value, dataa=value2)
+
+@app.route('/index_db',methods=['POST','GET'])
+def index_db():
+
+    return render_template('index_db.html')
+
+
+
+
+@app.route('/hodlog',methods=['POST','GET'])
+def hodlog():   
+
+    msg=""
+    if request.method == 'POST':
+        staff_id = request.form['staff_id']
+        password = request.form['password']
+        cursor = mydb.cursor()
+        cursor.execute('SELECT * FROM fyp_staff WHERE staff_id = %s AND password = %s', (staff_id, password))
+        account = cursor.fetchone()
+        
+        if account:
+            session['staff_id'] = staff_id
+            session['user_type'] = 'hod'
+            msg="success"
+            
+        else:
+            msg="fail"
+            
+    return render_template('hodlog.html', msg=msg)
+
+
+@app.route('/viewhod',methods=['POST','GET'])
+def viewhod():
+    
+    if 'staff_id' not in session or session.get('user_type') != 'hod':
+        print("Please log in as a hod to access the page.", 'danger')
+        return redirect(url_for('hodlog'))
+
+    staff_id = session.get('staff_id')
+    cursor = mydb.cursor()
+    cursor.execute("SELECT staff_type, dept FROM fyp_staff WHERE staff_id = %s", (staff_id,))
+    user_data = cursor.fetchone()
+    user_type, user_dept = user_data[0], user_data[1]
+    
+
+    if user_type == 'hod':
+        
+        cursor.execute("SELECT * FROM fyp_staff WHERE staff_type='staff' AND dept = %s", (user_dept,))
+        data1 = cursor.fetchall()
+    else:
+        
+        cursor.execute("SELECT * FROM fyp_staff WHERE staff_type='staff' AND dept = %s", (user_dept,))
+        data1 = cursor.fetchall()
+        
+    
+
+    if request.method == 'POST':
+        selected_staff_id = request.form.get('staff')
+        selected_students = request.form.getlist('selected_staff[]')
+
+        # Get the staff details based on the selected staff's ID
+        cursor = mydb.cursor()
+        cursor.execute("SELECT staff_id, department FROM fyp_staff WHERE id = %s", (selected_staff_id,))
+        staff_details = cursor.fetchone()
+        staff_id = staff_details[0]
+        department = staff_details[1]
+
+        # Retrieve reg_no and dept from sb_student table for selected students
+        student_details = {}
+        for student_id in selected_students:
+            cursor.execute("SELECT reg_no, dept FROM fyp_student WHERE id = %s", (student_id,))
+            student_info = cursor.fetchone()
+            if student_info:
+                reg_no = student_info[0]
+                dept = student_info[1]
+                student_details[student_id] = {'reg_no': reg_no, 'dept': dept}
+
+            # Insert values into the new fyp_staff_allocation table
+            for student_id, details in student_details.items():
+                reg_no = details['reg_no']
+                dept = details['dept']
+                cursor.execute("INSERT INTO fyp_staff_allocation (staff_id, department, reg_no) VALUES (%s, %s, %s)", (staff_id, department, reg_no))
+
+                mydb.commit()
+
+    return redirect(url_for('index_db'))
+    
+    cursor.execute("SELECT * FROM fyp_student WHERE dept = %s", (user_dept,))
+    data3 = cursor.fetchall()
+    
+    return render_template('viewhod.html', fyp_staff=data1, fyp_student=data3)
+
+@app.route('/viewhod2',methods=['POST','GET'])
+def viewhod2():
+    
+    if 'staff_id' not in session or session.get('user_type') != 'hod':
+        print("Please log in as a hod to access the page.", 'danger')
+        return redirect(url_for('hodlog'))
+
+    staff_id = session.get('staff_id')
+    cursor = mydb.cursor()
+    cursor.execute("SELECT staff_type, dept FROM fyp_staff WHERE staff_id = %s", (staff_id,))
+    user_data = cursor.fetchone()
+    user_type, user_dept = user_data[0], user_data[1]
+    
+
+        
+    cursor.execute("SELECT * FROM fyp_student WHERE dept = %s", (user_dept,))
+    data1 = cursor.fetchall()
+        
+    cursor.close()
+
+
+    return render_template('viewhod2.html', fyp_student=data1)
+
+
+
+@app.route('/allocatedet',methods=['POST','GET'])
+def allocatedet():
+
+    if 'staff_id' not in session or session.get('user_type') != 'hod':
+        print("Please log in as a hod to access the page.", 'danger')
+        return redirect(url_for('hodlog'))
+        
+    
+    staff = request.args.get('staff')
+    cursor = mydb.cursor()
+    cursor.execute("SELECT * FROM fyp_staff_allocation WHERE staff = %s", (staff,))
+    data2 = cursor.fetchall()
+    return render_template('allocatedet.html', fyp_staff_allocation=data2, staff=staff)
+    
+
+@app.route('/stafflog',methods=['POST','GET'])
+def stafflog():    
+
+    msg=""
+    if request.method == 'POST':
+        staff_id = request.form['staff_id']
+        password = request.form['password']
+        cursor = mydb.cursor()
+        cursor.execute('SELECT * FROM fyp_staff WHERE staff_id = %s AND password = %s', (staff_id, password))
+        account = cursor.fetchone()
+        
+        if account:
+            session['staff_id'] = staff_id
+            session['user_type'] = 'staff'
+            msg="success"
+            
+        else:
+            msg="fail"
+            
+    return render_template('stafflog.html', msg=msg)
+
+@app.route('/staffview', methods=['POST', 'GET'])
+def staffview():
+    if 'staff_id' not in session or session.get('user_type') != 'staff':
+        print("Please log in as a admin to access the page.", 'danger')
+        return redirect(url_for('stafflog'))
+    cursor = mydb.cursor()
+    staff_id = session.get('staff_id')
+    cursor.execute("SELECT * FROM fyp_staff_allocation WHERE staff_id = %s", (staff_id,))
+    data = cursor.fetchall()
+
+    return render_template('staffview.html', fyp_staff_allocation=data)
+
+@app.route('/stulog',methods=['POST','GET'])
+def stulog():    
+
+    msg=""
+    if request.method == 'POST':
+        reg_no = request.form['reg_no']
+        password = request.form['password']
+        cursor = mydb.cursor()
+        cursor.execute('SELECT * FROM fyp_student WHERE reg_no = %s AND password = %s', (reg_no, password))
+        account = cursor.fetchone()
+        
+        if account:
+            session['reg_no'] = reg_no
+            session['user_type'] = 'student'
+            msg="success"
+            return redirect(url_for('index_db'))
+        else:
+            msg="fail"
+            
+    return render_template('stulog.html', msg=msg)
+
+@app.route('/abstract',methods=['POST','GET'])
+def abstract():
+    msg=""
+    if 'reg_no' not in session or session.get('user_type') != 'student':
+        print("Please log in as a hod to access the page.", 'danger')
+        return redirect(url_for('stulog'))
+
+       
+    image_paths=[]
+    if request.method == 'POST':
+        name = request.form.get('name')
+        reg_no = request.form.get('reg_no')
+        staff = request.form.get('staff')
+        
+        doc_file = request.files.get('doc')
+        if doc_file:
+            doc_filename = secure_filename(doc_file.filename)
+            doc_file.save('D:/kalirajan/fyp/static/uploads/' + doc_filename)
+            doc_path = (doc_filename)  # Adjust the folder structure as needed
+        else:
+            doc_path = None
+
+        mycursor = mydb.cursor()
+        mycursor.execute("SELECT count(*) FROM sb_process where name=%s",(name,))
+        data = mycursor.fetchone()[0]
+
+        if data==0:
+            mycursor.execute("SELECT max(id)+1 FROM sb_process")
+            maxid = mycursor.fetchone()[0]
+            if maxid is None:
+                maxid=1
+
+            sql = "INSERT INTO sb_process(id, name, regno, staff, images) VALUES (%s, %s, %s, %s, %s)"
+            val = (maxid, name, regno, staff, doc_path)
+            mycursor.execute(sql, val)
+            mydb.commit()
+            mycursor.close()
+            msg="success"
+            return redirect(url_for('index_db'))
+        else:
+            msg="fail"
+
+    username=session.get('uname')
+    cursor = mydb.cursor()
+    cursor.execute("SELECT * FROM sb_student WHERE regno = %s", (username,))
+    data1 = cursor.fetchall()
+    cursor.close()
+ 
+    
+    return render_template('abstract.html', data1=data1, msg=msg)
+
+@app.route('/viewabs',methods=['POST','GET'])
+def viewabs():
+    if 'uname' not in session or session.get('user_type') != 'staff':
+        print("Please log in as a hod to access the page.", 'danger')
+        return redirect(url_for('stafflog'))
+
+    username = session.get('uname')
+    cursor = mydb.cursor()
+    cursor.execute("SELECT name FROM sb_user WHERE uname = %s", (username,))
+    user_data = cursor.fetchone()
+    user_name = user_data[0]
+    cursor.execute("SELECT * FROM sb_process WHERE staff = %s", (user_name,))
+    data = cursor.fetchall()
+    
+
+    return render_template('viewabs.html',user_name=user_name, sb_process=data)
+
+
+app.route('/logout')
+def logout():
+    
+    return redirect(url_for('index'))
+
+
+if __name__ == "__main__":
+    app.secret_key = os.urandom(12)
+    app.run(debug=True,host='0.0.0.0', port=5000)
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	@app.route('/abstract',methods=['POST','GET'])
+def abstract():
+    msg=""
+    if 'reg_no' not in session or session.get('user_type') != 'student':
+        print("Please log in as a hod to access the page.", 'danger')
+        return redirect(url_for('stulog'))
+
+       
+    image_paths=[]
+    if request.method == 'POST':
+        dept = request.form.get('dept')
+        reg_no = request.form.get('reg_no')
+        staff_id = request.form.get('staff_id')
+        
+        doc_file = request.files.get('doc')
+        if doc_file:
+            doc_filename = secure_filename(doc_file.filename)
+            doc_file.save('D:/kalirajan/fyp/static/uploads/' + doc_filename)
+            doc_path = (doc_filename)  # Adjust the folder structure as needed
+        else:
+            doc_path = None
+
+        mycursor = mydb.cursor()
+        mycursor.execute("SELECT count(*) FROM fyp_title where dept=%s",(dept,))
+        data = mycursor.fetchone()[0]
+
+        if data==0:
+            mycursor.execute("SELECT max(id)+1 FROM fyp_title")
+            maxid = mycursor.fetchone()[0]
+            if maxid is None:
+                maxid=1
+
+            sql = "INSERT INTO fyp_title(id, dept, reg_no, staff_id, doc_path) VALUES (%s, %s, %s, %s, %s)"
+            val = (maxid, dept, reg_no, staff_id, doc_path)
+            mycursor.execute(sql, val)
+            mydb.commit()
+            mycursor.close()
+            msg="success"
+            return redirect(url_for('index_db'))
+        else:
+            msg="fail"
+
+    reg_no=session.get('reg_no')
+    cursor = mydb.cursor()
+    cursor.execute("SELECT * FROM fyp_staff_allocation WHERE reg_no = %s", (reg_no,))
+    data1 = cursor.fetchall()
+    cursor.close()
+ 
+    
+    return render_template('abstract.html', data1=data1, msg=msg)
+

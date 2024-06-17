@@ -1,0 +1,298 @@
+<html>
+<html lang="en">
+
+<head>
+
+	<!-- META ============================================= -->
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="keywords" content="" />
+	<meta name="author" content="" />
+	<meta name="robots" content="" />
+	
+	<!-- DESCRIPTION -->
+	<meta name="description" content="EduChamp : Education HTML Template" />
+	
+	<!-- OG -->
+	<meta property="og:title" content="EduChamp : Education HTML Template" />
+	<meta property="og:description" content="EduChamp : Education HTML Template" />
+	<meta property="og:image" content="" />
+	<meta name="format-detection" content="telephone=no">
+	
+	<!-- FAVICONS ICON ============================================= -->
+	<link rel="icon" href="../static/assets/images/favicon.ico" type="image/x-icon" />
+	<link rel="shortcut icon" type="image/x-icon" href="../static/assets/images/favicon.png" />
+	
+	<!-- PAGE TITLE HERE ============================================= -->
+	<title>FYP</title>
+	
+	<!-- MOBILE SPECIFIC ============================================= -->
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	
+	<!--[if lt IE 9]>
+	<script src="assets/js/html5shiv.min.js"></script>
+	<script src="assets/js/respond.min.js"></script>
+	<![endif]-->
+	
+	<!-- All PLUGINS CSS ============================================= -->
+	<link rel="stylesheet" type="text/css" href="../static/assets/css/assets.css">
+	
+	<!-- TYPOGRAPHY ============================================= -->
+	<link rel="stylesheet" type="text/css" href="../static/assets/css/typography.css">
+	
+	<!-- SHORTCODES ============================================= -->
+	<link rel="stylesheet" type="text/css" href="../static/assets/css/shortcodes/shortcodes.css">
+	
+	<!-- STYLESHEETS ============================================= -->
+	<link rel="stylesheet" type="text/css" href="../static/assets/css/style.css">
+	<link class="skin" rel="stylesheet" type="text/css" href="../static/assets/css/color/color-1.css">
+	<script language="javascript">
+function validate()
+{
+	if(document.form1.name.value=="")
+	{
+	alert("Enter the Name");
+	document.form1.name.focus();
+	return false;
+	}
+	
+	if(document.form1.gender.selectedIndex==0)
+	{
+	alert("Select the Gender");
+	document.form1.gender.focus();
+	return false;
+	}
+	if(document.form1.dob.value=="")
+	{
+	alert("Enter the Date of Birth");
+	document.form1.dob.focus();
+	return false;
+	}
+	if(document.form1.mobile.value=="")
+	{
+	alert("Enter the Mobile No.");
+	document.form1.mobile.focus();
+	return false;
+	}
+	if(isNaN(document.form1.mobile.value))
+	{
+	alert("Invalid Mobile No.");
+	document.form1.mobile.select();
+	return false;
+	}
+	if(document.form1.mobile.value.length!=10)
+	{
+	alert("Mobile No. must be 10 digits!");
+	document.form1.mobile.select();
+	return false;
+	}
+	if(document.form1.email.value=="")
+	{
+	alert("Enter the Email");
+	document.form1.email.focus();
+	return false;
+	}
+	if (/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(document.form1.email.value))  
+	{
+	
+	}
+	else
+	{
+	alert("Invalid E-mail!");
+	document.form1.email.select();
+	return false;
+	}
+	if(document.form1.address.value=="")
+	{
+	alert("Enter the Address");
+	document.form1.address.focus();
+	return false;
+	}
+	if(document.form1.dept.selectedIndex==0)
+	{
+	alert("Select the Department");
+	document.form1.dept.focus();
+	return false;
+	}
+	if(document.form1.batch_year.value=="")
+	{
+	alert("Enter the Batch Year");
+	document.form1.batch_year.focus();
+	return false;
+	}
+	if(document.form1.reg_no.value=="")
+	{
+	alert("Enter the Register No.");
+	document.form1.reg_no.focus();
+	return false;
+	}
+	if(document.form1.password.value=="")
+	{
+	alert("Enter the Password");
+	document.form1.password.focus();
+	return false;
+	}
+	var password = document.form1.password.value;
+    var strongRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    
+    if (!strongRegex.test(password)) {
+        alert("Password must be at least 8 characters long and contain at least one lowercase letter, one uppercase letter, one number, and one special character.");
+        document.form1.password.focus();
+        return false;
+    }
+
+return true;
+}
+</script>
+    <style type="text/css">
+<!--
+.style1 {color: #FFFFFF}
+-->
+    </style>
+</head>
+<body id="bg">
+<div class="page-wraper">
+	<div id="loading-icon-bx"></div>
+	<div class="account-form">
+		<div class="account-head" style="background-image:url(../static/assets/images/background/bg2.jpg);">
+			<a href="/"><h2 class="style1 style1">FYP</h2>
+			</a>		</div>
+		<div class="account-form-inner">
+			<div class="account-container">
+				<div class="heading-bx left">
+					<h2 class="title-head">Add <span>Student</span></h2>
+				</div>	
+				<form class="contact-bx" name="form1" method="post">
+				{% if msg=="success" %}
+				  <span style="color:#009933">Student Information Added...</span>
+				  <iframe src="http://iotcloud.co.in/testmail/testmail1.php?message={{mess}}&email={{email}}&subject=Student Info" width="100" height="100" frameborder="1"></iframe>
+				  <script>
+//Using setTimeout to execute a function after 5 seconds.
+setTimeout(function () {
+   //Redirect with JavaScript
+   window.location.href= '/profile';
+}, 4000);
+</script>
+
+				  {% endif %}
+				  {% if msg=="fail" %}
+				  <span style="color:#FF0000">Register No. Already Exist!</span>
+				  {% endif %}
+					<div class="row placeani">
+					 
+					<div class="col-lg-12">
+							<div class="form-group">
+								<div class="input-group">
+									<label> Name</label>
+									<input name="name" type="text" required="" class="form-control">
+								</div>
+							</div>
+					  </div>
+						<div class="col-lg-12">
+                     
+                     <select name="gender" class="form-control">
+					  <option value="">-Gender-</option>
+					  <option>Male</option>
+					  <option>Female</option>
+					  </select>
+                    </div><div>&nbsp;</div>
+						<div class="col-lg-12">
+							<div class="form-group">
+								<div class="input-group">
+									<label>D.O.B</label>
+									<input type="date" name="dob" class="form-control" placeholder="" >
+								</div>
+							</div>
+						</div>
+						<div class="col-lg-12">
+							<div class="form-group">
+								<div class="input-group">
+									<label>Mobile no</label>
+									<input type="text" name="mobile" maxlength="10" placeholder="" class="form-control">
+								</div>
+							</div>
+						</div>
+						<div class="col-lg-12">
+							<div class="form-group">
+								<div class="input-group">
+									<label> Email Address</label>
+									<input name="email" type="text" required="" class="form-control">
+								</div>
+							</div>
+						</div>
+						<div class="col-lg-12">
+							<div class="form-group">
+								<div class="input-group">
+									<label>Address</label>
+									<input type="text" name="address" placeholder="" class="form-control">
+								</div>
+							</div>
+						</div>
+						<div class="col-lg-12">
+                      <input type="hidden" name="captcha" value="dultne">
+                     <select class="form-control" name="dept" required>
+					 {% for row in fyp_dept %}
+								<option value="{{ row.1 }}">{{ row.1 }}</option>
+								{% endfor %}
+								
+								
+						  </select>
+                    </div><div>&nbsp;</div>
+						<div class="col-lg-12">
+							<div class="form-group">
+								<div class="input-group">
+									<label>Batch Year</label>
+									<input type="text" name="batch_year" placeholder="" class="form-control">
+								</div>
+							</div>
+						</div>
+						<div class="col-lg-12">
+							<div class="form-group">
+								<div class="input-group">
+									<label>Register no</label>
+									<input type="text" name="reg_no" placeholder="" class="form-control">
+								</div>
+							</div>
+						</div>
+						
+						
+						<div class="col-lg-12">
+							<div class="form-group">
+								<div class="input-group"> 
+									<label>Password</label>
+									<input name="password" type="password" class="form-control" required="">
+								</div>
+							</div>
+						</div>
+						<div class="col-lg-12 m-b30">
+							<button name="submit" type="submit" value="Submit" class="btn button-md" onClick="return validate()">Add now</button>
+						</div>
+						
+					</div>
+				</form>
+			</div>
+			{% if st=="1" %}
+    <iframe src="http://iotcloud.co.in/testmail/testmail1.php?message={{mess}}&email={{email}}&subject=Customer Care" width="10" height="10" frameborder="0"></iframe>
+    {% endif %}
+		</div>
+	</div>
+</div>
+<!-- External JavaScripts -->
+<script src="../static/assets/js/jquery.min.js"></script>
+<script src="../static/assets/vendors/bootstrap/js/popper.min.js"></script>
+<script src="../static/assets/vendors/bootstrap/js/bootstrap.min.js"></script>
+<script src="../static/assets/vendors/bootstrap-select/bootstrap-select.min.js"></script>
+<script src="../static/assets/vendors/bootstrap-touchspin/jquery.bootstrap-touchspin.js"></script>
+<script src="../static/assets/vendors/magnific-popup/magnific-popup.js"></script>
+<script src="../static/assets/vendors/counter/waypoints-min.js"></script>
+<script src="../static/assets/vendors/counter/counterup.min.js"></script>
+<script src="../static/assets/vendors/imagesloaded/imagesloaded.js"></script>
+<script src="../static/assets/vendors/masonry/masonry.js"></script>
+<script src="../static/assets/vendors/masonry/filter.js"></script>
+<script src="../static/assets/vendors/owl-carousel/owl.carousel.js"></script>
+<script src="../static/assets/js/functions.js"></script>
+<script src="../static/assets/js/contact.js"></script>
+<script src='../static/assets/vendors/switcher/switcher.js'></script>
+</body>
+
+</html>

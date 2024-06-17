@@ -1,0 +1,768 @@
+from flask import Flask, render_template, redirect, request, session, url_for
+import datetime
+import os
+from werkzeug.utils import secure_filename
+from flask import send_from_directory, abort
+from docx import Document
+import mysql.connector
+from docx.shared import Inches
+from docx2pdf import convert
+import pythoncom
+import time
+
+app = Flask(__name__, static_url_path='/static')
+app.secret_key = 'abcdef'
+
+mydb = mysql.connector.connect(
+    host="127.0.0.1",
+    user="root",
+    password="",
+    charset="utf8",
+    use_pure=True,
+    database="fyp_db"
+)
+
+@app.route('/',methods=['POST','GET'])
+def index():
+
+    return render_template('index.html')
+
+@app.route('/login',methods=['POST','GET'])
+def login():
+    
+    msg=""
+    if request.method == 'POST':
+        username = request.form['username']
+        username = request.form['password']
+        mycursor = mydb.cursor()
+        mycursor.execute("SELECT count(*) FROM fyp_admin where username=%s && password=%s",(username,password))
+        myresult = mycursor.fetchone()[0]
+        if myresult>0:
+            session['username'] = username
+            msg="sucess"
+            return redirect(url_for('index')) 
+        else:
+            msg="fail!!!"
+        
+
+    return render_template('login.html',msg=msg)
+
+
+@app.route('/addstu',methods=['POST','GET'])
+def addstu():
+    msg=""
+    
+    if request.method=='POST':
+        reg_no=request.form['reg_no']
+        name=request.form['name']
+        gender=request.form['gender']
+        dob=request.form['dob']
+        mobile=request.form['mobile']
+        email=request.form['email']
+        address=request.form['address']
+        dept=request.form['dept']
+        batch_year=request.form['batch_year']
+        password=request.form['password']
+
+        
+        now = datetime.datetime.now()
+        date_join=now.strftime("%d-%m-%Y")
+        mycursor = mydb.cursor()
+
+        mycursor.execute("SELECT count(*) FROM fyp_student where reg_no=%s",(reg_no, ))
+        cnt = mycursor.fetchone()[0]
+        if cnt==0:
+            mycursor.execute("SELECT max(id)+1 FROM fyp_student")
+            maxid = mycursor.fetchone()[0]
+            if maxid is None:
+                maxid=1
+            sql = "INSERT INTO fyp_student(id, name, reg_no, gender, dob, mobile, email, address,  dept, batch_year, password,date_join) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s)"
+            val = (maxid, name, reg_no, gender, dob, mobile, email, address,  dept, batch_year, password,date_join)
+            
+            mycursor.execute(sql, val)
+            mydb.commit()
+
+            msg="success"
+        else:
+            msg="fail"
+            
+    return render_template('addstu.html',msg=msg)
+
+
+@app.route('/addstaff',methods=['POST','GET'])
+def addstaff():
+    msg=""
+    
+    if request.method=='POST':
+        
+        staff_id=request.form['staff_id']
+        name=request.form['name']       
+        mobile=request.form['mobile']
+        email=request.form['email']
+        location=request.form['location']        
+        password=request.form['password']
+        staff_type=request.form['staff_type']
+        
+       
+
+        
+        now = datetime.datetime.now()
+        date_join=now.strftime("%d-%m-%Y")
+        mycursor = mydb.cursor()
+
+        mycursor.execute("SELECT count(*) FROM fyp_staff where staff_id=%s",(staff_id, ))
+        cnt = mycursor.fetchone()[0]
+        if cnt==0:
+            mycursor.execute("SELECT max(id)+1 FROM fyp_staff")
+            maxid = mycursor.fetchone()[0]
+            if maxid is None:
+                maxid=1
+            sql = "INSERT INTO fyp_staff(id, name, mobile, email, location,  staff_id, password, staff_type,date_join) VALUES (%s, %s, %s, %s, %s, %s, %s,%s,%s)"
+            val = (maxid, name, mobile, email, location,  staff_id, password, staff_type,date_join)
+            
+            
+            mycursor.execute(sql, val)
+            mydb.commit()
+
+            msg="success"
+        else:
+            msg="fail"
+            
+    return render_template('addstaff.html',msg=msg)
+
+
+@app.route('/profile',methods=['POST','GET'])
+def profile():
+    
+    mycursor = mydb.cursor()
+    mycursor.execute("SELECT * FROM fyp_student")
+    value = mycursor.fetchall()
+            
+    act = request.args.get('act')
+    if act=="del":
+        did = request.args.get('did')
+        mycursor.execute("delete from fyp_student where id=%s",(did,))
+        mydb.commit()
+        return redirect(url_for('profile'))
+
+    mycursor = mydb.cursor()
+    mycursor.execute("SELECT * FROM fyp_staff order by id")
+    value2 = mycursor.fetchall()
+
+    act = request.args.get('act')
+    if act=="del":
+        did = request.args.get('did')
+        mycursor.execute("delete from fyp_staff where id=%s",(did,))
+        mydb.commit()
+        return redirect(url_for('profile')) 
+   
+    return render_template('profile.html', data=value, dataa=value2)
+
+
+
+
+
+@app.route('/hodlog',methods=['POST','GET'])
+def hodlog():   
+
+    msg=""
+    if request.method == 'POST':
+        staff_id = request.form['staff_id']
+        password = request.form['password']
+        cursor = mydb.cursor()
+        cursor.execute('SELECT * FROM fyp_staff WHERE staff_id = %s AND password = %s', (staff_id, password))
+        account = cursor.fetchone()
+        
+        if account:
+            session['staff_id'] = staff_id
+            session['user_type'] = 'hod'
+            msg="success"
+            
+        else:
+            msg="fail"
+            
+    return render_template('hodlog.html', msg=msg)
+
+
+@app.route('/viewhod',methods=['POST','GET'])
+def viewhod():
+    
+    if 'staff_id' not in session or session.get('user_type') != 'hod':
+        print("Please log in as a hod to access the page.", 'danger')
+        return redirect(url_for('hodlog'))
+
+    staff_id = session.get('staff_id')
+    cursor = mydb.cursor()
+    cursor.execute("SELECT staff_type, dept FROM fyp_staff WHERE staff_id = %s", (staff_id,))
+    user_data = cursor.fetchone()
+    user_type, user_dept = user_data[0], user_data[1]
+    
+
+    if user_type == 'hod':
+        
+        cursor.execute("SELECT * FROM fyp_staff WHERE staff_type='staff' AND dept = %s", (user_dept,))
+        data1 = cursor.fetchall()
+        cursor.execute("SELECT * FROM fyp_student WHERE dept = %s", (user_dept,))
+        data3 = cursor.fetchall()
+        
+    
+
+    if request.method == 'POST':
+        selected_staff_id = request.form.get('staff')
+        selected_students = request.form.getlist('selected_staff[]')
+        name = request.form.get('name')
+        sname = request.form.get('sname')
+
+        
+        cursor = mydb.cursor()
+        cursor.execute("SELECT staff_id, dept FROM fyp_staff WHERE id = %s", (selected_staff_id,))
+        staff_details = cursor.fetchone()
+        staff_id = staff_details[0]
+        department = staff_details[1]
+
+        
+        student_details = {}
+        for student_id in selected_students:
+            cursor.execute("SELECT reg_no, dept FROM fyp_student WHERE id = %s", (student_id,))
+            student_info = cursor.fetchone()
+            if student_info:
+                reg_no = student_info[0]
+                dept = student_info[1]
+                student_details[student_id] = {'reg_no': reg_no, 'dept': dept}
+
+        
+        for student_id, details in student_details.items():
+            reg_no = details['reg_no']
+            dept = details['dept']
+            cursor = mydb.cursor()
+
+            
+            cursor.execute("SELECT max(id)+1 FROM fyp_staff_allocation")
+            maxid = cursor.fetchone()[0]
+            if maxid is None:
+                maxid=1
+            cursor.execute("INSERT INTO fyp_staff_allocation (id, staff_id, dept, reg_no, name, sname) VALUES (%s, %s, %s, %s, %s, %s)", (maxid, staff_id, dept, reg_no, name, sname))
+
+        mydb.commit()
+        cursor.close()
+
+    return render_template('viewhod.html', fyp_staff=data1, fyp_student=data3)
+
+@app.route('/viewhod2',methods=['POST','GET'])
+def viewhod2():
+    
+    if 'staff_id' not in session or session.get('user_type') != 'hod':
+        print("Please log in as a hod to access the page.", 'danger')
+        return redirect(url_for('hodlog'))
+
+    staff_id = session.get('staff_id')
+    cursor = mydb.cursor()
+    cursor.execute("SELECT staff_type, dept FROM fyp_staff WHERE staff_id = %s", (staff_id,))
+    user_data = cursor.fetchone()
+    user_type, user_dept = user_data[0], user_data[1]
+    
+
+        
+    cursor.execute("SELECT * FROM fyp_student WHERE dept = %s", (user_dept,))
+    data1 = cursor.fetchall()
+        
+    cursor.close()
+
+
+    return render_template('viewhod2.html', fyp_student=data1)
+
+@app.route('/allocatedet',methods=['POST','GET'])
+def allocatedet():
+
+    if 'staff_id' not in session or session.get('user_type') != 'hod':
+        print("Please log in as a hod to access the page.", 'danger')
+        return redirect(url_for('hodlog'))
+        
+    
+    staff_id = request.args.get('staff_id')
+    cursor = mydb.cursor()
+    cursor.execute("SELECT * FROM fyp_staff_allocation WHERE staff_id = %s", (staff_id,))
+    data2 = cursor.fetchall()
+    return render_template('allocatedet.html', fyp_staff_allocation=data2, staff_id=staff_id)
+    
+
+@app.route('/stafflog',methods=['POST','GET'])
+def stafflog():    
+
+    msg=""
+    if request.method == 'POST':
+        staff_id = request.form['staff_id']
+        password = request.form['password']
+        cursor = mydb.cursor()
+        cursor.execute('SELECT * FROM fyp_staff WHERE staff_id = %s AND password = %s', (staff_id, password))
+        account = cursor.fetchone()
+        
+        if account:
+            session['staff_id'] = staff_id
+            session['user_type'] = 'staff'
+            msg="success"
+            
+        else:
+            msg="fail"
+            
+    return render_template('stafflog.html', msg=msg)
+
+
+@app.route('/staffview', methods=['POST', 'GET'])
+def staffview():
+    if 'staff_id' not in session or session.get('user_type') != 'staff':
+        print("Please log in as a admin to access the page.", 'danger')
+        return redirect(url_for('stafflog'))
+    
+    cursor = mydb.cursor()
+    staff_id = session.get('staff_id')
+    cursor.execute("SELECT * FROM fyp_staff_allocation WHERE staff_id = %s", (staff_id,))
+    data = cursor.fetchall()
+    cursor.close()
+
+    return render_template('staffview.html', fyp_staff_allocation=data)
+
+@app.route('/viewabs', methods=['POST', 'GET'])
+def viewabs():
+    if 'staff_id' not in session or session.get('user_type') != 'staff':
+        print("Please log in as a hod to access the page.", 'danger')
+        return redirect(url_for('stafflog'))
+
+    msg=""
+
+    image_paths = []
+    if request.method == 'POST':
+        dept = request.form.get('dept')
+        staff_id = request.form.get('staff_id')
+        images = request.files.getlist('images[]')
+        image_paths = []
+
+        for image in images:
+            filename = secure_filename(image.filename)
+            image.save('D:/kalirajan/fyp/static/sign/' + filename)
+            image_paths.append(filename)
+            
+
+        mycursor = mydb.cursor()
+        mycursor.execute("SELECT count(*) FROM fyp_digital_signature where dept=%s",(dept,))
+        dataa = mycursor.fetchone()[0]
+
+        if dataa==0:
+            mycursor.execute("SELECT max(id)+1 FROM fyp_digital_signature")
+            maxid = mycursor.fetchone()[0]
+            if maxid is None:
+                maxid=1
+
+            sql = "INSERT INTO fyp_digital_signature(id, dept, staff_id, signature_link) VALUES (%s, %s, %s, %s)"
+            val = (maxid, dept, staff_id, ','.join(image_paths))
+            mycursor.execute(sql, val)
+            mydb.commit()
+            print("Registration successfull")
+            return redirect(url_for('index_db'))
+        
+    staff_id = session.get('staff_id')
+    cursor = mydb.cursor(buffered=True)
+    
+    try:
+        cursor.execute("SELECT * FROM fyp_title WHERE staff_id = %s", (staff_id,))
+        data = cursor.fetchall()
+
+        cursor.execute("SELECT * FROM fyp_title WHERE staff_id = %s", (staff_id,))
+        user_dataa = cursor.fetchone()
+
+        cursor.execute("SELECT reg_no FROM fyp_title WHERE staff_id = %s", (staff_id,))
+        user_data = cursor.fetchone()
+        user_name = user_data[0]
+
+        cursor.execute("SELECT * FROM fyp_student WHERE reg_no = %s", (user_name,))
+        student_data = cursor.fetchone()
+
+    finally:
+        cursor.close()
+
+    return render_template('viewabs.html', fyp_title=data, user_name=user_name, student_data=student_data, user_dataa=user_dataa,msg=msg)
+
+@app.route('/download_document/<path:doc_path>', methods=['GET'])
+def download_document(doc_path):
+    
+    uploads_folder = 'D:/kalirajan/fyp/static/uploads/'  # Adjust the folder structure as needed
+    return send_from_directory(uploads_folder, doc_path, as_attachment=True)
+
+@app.route('/reviewupdate',methods=['POST','GET'])
+def reviewupdate():
+    
+    if 'staff_id' not in session or session.get('user_type') != 'staff':
+        print("Please log in as a hod to access the page.", 'danger')
+        return redirect(url_for('stafflog'))
+
+    staff_id = session.get('staff_id')
+    cursor = mydb.cursor()
+    cursor.execute("SELECT * FROM fyp_title WHERE staff_id = %s", (staff_id,))
+    data = cursor.fetchall()
+    
+    msg=""
+    if request.method=='POST':
+        
+        staff_id=request.form.get('staff_id')
+        dept=request.form.get('dept')       
+        review_date=request.form['review_date']
+        review_time=request.form['review_time']
+        requirement=request.form['requirement']        
+
+        mycursor = mydb.cursor()
+
+        mycursor.execute("SELECT count(*) FROM fyp_review where staff_id=%s",(staff_id, ))
+        cnt = mycursor.fetchone()[0]
+        if cnt==0:
+            mycursor.execute("SELECT max(id)+1 FROM fyp_review")
+            maxid = mycursor.fetchone()[0]
+            if maxid is None:
+                maxid=1
+            sql = "INSERT INTO fyp_review(id, staff_id, dept, review_date, review_time, requirement) VALUES (%s, %s, %s, %s, %s, %s)"
+            val = (maxid, staff_id, dept, review_date, review_time, requirement)
+            
+            
+            mycursor.execute(sql, val)
+            mydb.commit()
+            mycursor.close()
+            msg="success"
+        else:
+            msg="fail"
+
+    return render_template('reviewupdate.html', data=data, msg=msg)
+
+@app.route('/viewreport', methods=['POST', 'GET'])
+def viewreport():
+    
+    if 'staff_id' not in session or session.get('user_type') != 'staff':
+        print("Please log in as a admin to access the page.", 'danger')
+        return redirect(url_for('stafflog'))
+    
+    cursor = mydb.cursor()
+    staff_id = session.get('staff_id')
+    cursor.execute("SELECT * FROM fyp_staff_allocation WHERE staff_id = %s", (staff_id,))
+    data = cursor.fetchall()
+    cursor.close()
+
+    
+    reg_no = request.args.get('reg_no')
+    cursor = mydb.cursor()
+    cursor.execute("SELECT * FROM fyp_review_report WHERE reg_no = %s", (reg_no,))
+    reports_data = cursor.fetchall()
+    cursor.close()
+
+    return render_template('viewreport.html', fyp_staff_allocation=data, reg_no=reg_no, fyp_review_report=reports_data)
+
+@app.route('/download_report/<int:review_id>', methods=['GET'])
+def download_report(review_id):
+    try:
+        uploads_folder = 'D:/kalirajan/fyp/static/report/'
+
+        # Fetch the relevant record from the database based on the review_id
+        cursor = mydb.cursor()
+        cursor.execute("SELECT * FROM fyp_review_report WHERE review_id = %s", (review_id,))
+        review_data = cursor.fetchone()
+        cursor.close()
+
+        if review_data:
+            # Assuming 'upload_file' is a comma-separated list of file names
+            file_names = review_data[5].split(', ')
+
+            # Check if the user has provided a specific file index in the request query parameters
+            file_index = request.args.get('file_index', default=0, type=int)
+
+            # Check if the requested file index is within the valid range
+            if 0 <= file_index < len(file_names):
+                selected_file = file_names[file_index]
+
+                # Generate the file path
+                file_path = os.path.join(uploads_folder, selected_file)
+
+                return send_from_directory(uploads_folder, selected_file, as_attachment=True)
+            else:
+                abort(404)  # Invalid file index
+        else:
+            abort(404)  # Review not found
+    except FileNotFoundError:
+        abort(404)  # File not found
+    except Exception as e:
+        print("Error:", str(e))
+        abort(500)
+
+@app.route('/result', methods=['POST', 'GET'])
+def result():
+    
+    if 'staff_id' not in session or session.get('user_type') != 'staff':
+        print("Please log in as a admin to access the page.", 'danger')
+        return redirect(url_for('stafflog'))
+
+    if request.method == 'POST':
+        titlee = request.form.get('titlee')
+        reg_no = request.form.get('reg_no')
+        dept = request.form.get('dept')
+        staff_id = request.form.get('staff_id')
+        marks = request.form.get('marks')
+        remark = request.form.get('remark')
+
+        mycursor = mydb.cursor()
+
+        mycursor.execute("SELECT count(*) FROM fyp_review_result where reg_no=%s",(reg_no, ))
+        cnt = mycursor.fetchone()[0]
+        if cnt==0:
+            mycursor.execute("SELECT max(id)+1 FROM fyp_review_result")
+            maxid = mycursor.fetchone()[0]
+            if maxid is None:
+                maxid=1
+            sql = "INSERT INTO fyp_review_result(id, reg_no, titlee, dept, marks, remark, staff_id) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+            val = (maxid, reg_no, titlee, dept, marks, remark, staff_id)
+            mycursor.execute(sql, val)
+            mydb.commit()
+            mycursor.close()
+            msg="success"
+        else:
+            msg="fail"
+    
+    cursor = mydb.cursor()
+    staff_id = session.get('staff_id')
+    cursor.execute("SELECT * FROM fyp_staff_allocation WHERE staff_id = %s", (staff_id,))
+    data = cursor.fetchall()
+    cursor.close()
+
+    
+    reg_no = request.args.get('reg_no')
+    cursor = mydb.cursor()
+    cursor.execute("SELECT * FROM fyp_title WHERE reg_no = %s", (reg_no,))
+    reports_data = cursor.fetchall()
+    cursor.close()
+
+    return render_template('result.html', fyp_staff_allocation=data, reg_no=reg_no, fyp_title=reports_data)
+
+        
+@app.route('/viewreview', methods=['POST', 'GET'])
+def viewreview():
+    msg = ""
+    if 'reg_no' not in session or session.get('user_type') != 'student':
+        print("Please log in as a student to access the page.", 'danger')
+        return redirect(url_for('stulog'))
+
+    reg_no = session.get('reg_no')
+
+    if request.method == 'POST':
+        review_id = request.form.get('review_id')
+        date = request.form.get('date')
+        staff_id = request.form.get('Staff_id')
+        dept = request.form.get('dept')
+        pdf_files = request.files.getlist('pdf[]')
+
+        file_paths = []
+
+        if pdf_files:
+            for pdf in pdf_files:  # Iterate through the list of files
+                doc_filename = secure_filename(pdf.filename)
+                pdf.save('D:/kalirajan/fyp/static/report/' + doc_filename)
+                doc_path = doc_filename  # Adjust the folder structure as needed
+                file_paths.append(doc_path)
+
+            mycursor = mydb.cursor()
+            mycursor.execute("SELECT count(*) FROM fyp_review_report where staff_id=%s", (staff_id,))
+            cnt = mycursor.fetchone()[0]
+
+            if cnt == 0:
+                mycursor.execute("SELECT max(id)+1 FROM fyp_review_report")
+                maxid = mycursor.fetchone()[0]
+                if maxid is None:
+                    maxid = 1
+
+                # Convert the file_paths list to a string or tuple, depending on your database structure
+                file_paths_str = ', '.join(file_paths)
+                # or file_paths_tuple = tuple(file_paths)
+
+                sql = "INSERT INTO fyp_review_report(id, review_id, date, staff_id, dept, upload_file, reg_no) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+                val = (maxid, review_id, date, staff_id, dept, file_paths_str, reg_no)
+                mycursor.execute(sql, val)
+                mydb.commit()
+                mycursor.close()
+                msg = "success"
+                return redirect(url_for('index_db'))
+            else:
+                msg = "fail"
+
+    cursor = mydb.cursor()
+    cursor.execute("SELECT staff_id FROM fyp_staff_allocation WHERE reg_no = %s", (reg_no,))
+    user_data = cursor.fetchone()
+    user_id = user_data[0]
+    cursor.execute("select * from fyp_review WHERE staff_id = %s", (user_id,))
+    data = cursor.fetchall()
+    cursor.execute("select * from fyp_review_result WHERE reg_no = %s", (reg_no,))
+    data1 = cursor.fetchall()
+    cursor.close()
+    
+
+    return render_template('viewreview.html', fyp_review=data, user_id=user_id, msg=msg, fyp_review_result=data1)
+
+
+@app.route('/stulog',methods=['POST','GET'])
+def stulog():    
+
+    msg=""
+    if request.method == 'POST':
+        reg_no = request.form['reg_no']
+        password = request.form['password']
+        cursor = mydb.cursor()
+        cursor.execute('SELECT * FROM fyp_student WHERE reg_no = %s AND password = %s', (reg_no, password))
+        account = cursor.fetchone()
+        
+        if account:
+            session['reg_no'] = reg_no
+            session['user_type'] = 'student'
+            msg="success"
+            
+        else:
+            msg="fail"
+            
+    return render_template('stulog.html', msg=msg)
+
+
+@app.route('/abstract', methods=['POST', 'GET'])
+def abstract():
+    msg = ""
+    if 'reg_no' not in session or session.get('user_type') != 'student':
+        print("Please log in as a student to access the page.", 'danger')
+        return redirect(url_for('stulog'))
+
+    if request.method == 'POST':
+        dept = request.form.get('dept')
+        reg_no = request.form.get('reg_no')
+        staff_id = request.form.get('staff_id')
+
+        doc_file = request.files.get('doc')
+        if doc_file:
+            doc_filename = secure_filename(doc_file.filename)
+            doc_file.save('D:/kalirajan/fyp/static/uploads/' + doc_filename)
+            doc_path = (doc_filename)  # Adjust the folder structure as needed
+
+            # Check if a document with the same title already exists
+            title = extract_title_from_doc(doc_file)
+            if not is_document_title_duplicate(title, reg_no, staff_id):
+                mycursor = mydb.cursor()
+                mycursor.execute("SELECT MAX(id)+1 FROM fyp_title")
+                maxid = mycursor.fetchone()[0]
+                if maxid is None:
+                    maxid = 1
+
+                sql = "INSERT INTO fyp_title(id, dept, reg_no, staff_id, doc_path, titlee) VALUES (%s, %s, %s, %s, %s, %s)"
+                val = (maxid, dept, reg_no, staff_id, doc_path, title)
+                mycursor.execute(sql, val)
+                mydb.commit()
+                mycursor.close()
+                msg = "success"
+            
+            else: 
+                msg = "fail"
+                
+
+    reg_no = session.get('reg_no')
+    cursor = mydb.cursor()
+    cursor.execute("SELECT * FROM fyp_staff_allocation WHERE reg_no = %s", (reg_no,))
+    data1 = cursor.fetchall()
+    cursor.close()
+
+    # Retrieve the digital signature link based on reg_no
+    
+    cursor = mydb.cursor()
+    cursor.execute("SELECT * FROM fyp_title WHERE reg_no = %s", (reg_no,))
+    data = cursor.fetchall()
+    cursor.close()
+
+    return render_template('abstract.html', data1=data1, msg=msg, data=data)
+
+
+def extract_title_from_doc(doc_file):
+    doc = Document(doc_file)
+    title = None
+    for paragraph in doc.paragraphs:
+        if paragraph.style.name == 'Title' or paragraph.style.name == 'Normal':
+            title = paragraph.text
+            break
+    return title
+
+
+def is_document_title_duplicate(title, reg_no, staff_id):
+    cursor = mydb.cursor()
+    cursor.execute("SELECT COUNT(*) FROM fyp_title WHERE titlee = %s AND reg_no = %s AND staff_id = %s", (title, reg_no, staff_id))
+    count = cursor.fetchone()[0]
+    cursor.close()
+    return count > 0
+
+@app.route('/download_pdf/<path:digital_signature_link>', methods=['GET'])
+def download_pdf(digital_signature_link):
+    
+    uploads_folder = 'D:/kalirajan/fyp/static/modified/'  # Adjust the folder structure as needed
+    return send_from_directory(uploads_folder, digital_signature_link, as_attachment=True)
+
+
+@app.route('/download_img', methods=['POST', 'GET'])
+def download_img():
+    if 'staff_id' not in session or session.get('user_type') != 'staff':
+        print("Please log in as a hod to access the page.", 'danger')
+        return redirect(url_for('stafflog'))
+
+    staff_id = request.args.get('staff_id')
+
+    cursor = mydb.cursor()
+    cursor.execute("SELECT * FROM fyp_title WHERE id = %s", (staff_id,))
+    data1 = cursor.fetchall()
+
+    staffid = session.get('staff_id')
+    cursor.execute("SELECT * FROM fyp_digital_signature WHERE staff_id = %s", (staffid,))
+    data2 = cursor.fetchall()
+
+    if data1 and data2:
+        document_path = data1[0][4]
+        signature_path = data2[0][3]
+
+        # Initialize COM
+        pythoncom.CoInitialize()
+
+        try:
+            # Open the Word document
+            doc = Document(os.path.join('D:/kalirajan/fyp/static/uploads/', document_path))
+
+            # Add the signature image to the Word document
+            doc.add_picture(os.path.join('D:/kalirajan/fyp/static/sign/', signature_path), width=Inches(2))
+
+            # Save the modified document as a Word document
+            modified_folder = 'D:/kalirajan/fyp/static/modified/'
+            timestamp = time.strftime("%H%M%S")
+            modified_path_docx =('modified_document.docx')
+            doc.save(modified_path_docx)
+
+            # Convert the Word document to PDF
+            modified_path_pdf = os.path.join(modified_folder, f'modified_document_{timestamp}.pdf')
+            convert(modified_path_docx, modified_path_pdf)
+            modified_pdf=(f'modified_document_{timestamp}.pdf')
+
+            update_query = "UPDATE fyp_title SET digital_signature_link = %s WHERE id = %s"
+            mydb.cursor().execute(update_query, (modified_pdf, staff_id))
+            mydb.commit()
+
+            # Return the converted PDF for download
+            return send_from_directory(modified_folder, modified_pdf, as_attachment=True)
+
+        finally:
+            
+            pythoncom.CoUninitialize()
+
+    # Handle the case where data1 and data2 are not available
+    return render_template('download_img.html', staff_id=staff_id, data1=data1, staffid=staffid, data2=data2)
+
+app.route('/logout')
+def logout():
+    
+    return redirect(url_for('index'))
+
+
+if __name__ == "__main__":
+    app.secret_key = os.urandom(12)
+    app.run(debug=True, host='0.0.0.0', port=5000)
+

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document and Signature Details</title>
+</head>
+<body>
+
+{% if data1 %}
+    <h2>Document and Signature Details for {{ staff_id }}</h2>
+    
+    <p>Document Path: {{ data1[0][4] }}</p>
+    <p>Signature Path: {{ data1[0][5] }}</p>
+
+    <!-- Add your download links or any other display logic here -->
+    <a href="{{ url_for('download_document', doc_path=data1[0][4]) }}" class="btn button-sm outline" download>Download Document</a>
+    
+{% else %}
+    <p>No data found for the given reg_no.</p>
+{% endif %}
+{% if data2 %}
+    <h2>Signature Details</h2>
+
+    <p>Signature Path: {{ data2[0][3] }}</p>
+
+    <!-- Add any other display logic for the signature here -->
+  
+
+{% else %}
+    <p>No signature data found for the given staff_id.</p>
+{% endif %}
+</body>
+</html>
